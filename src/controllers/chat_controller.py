@@ -5,7 +5,7 @@ from typing import List, Dict, Any
 from fastapi import APIRouter
 
 from models.schemas import ChatRequest, ChatResponse, ResumeMatch
-from services.resume_service import resume_service
+from services.rag_service import rag_service
 from exceptions.custom_exceptions import create_http_exception
 
 logger = logging.getLogger(__name__)
@@ -16,7 +16,7 @@ router = APIRouter(prefix="/api/v1/chat", tags=["chat"])
 @router.post("/search", response_model=ChatResponse)
 async def chat_search_resumes(request: ChatRequest):
     """
-    Chat-based resume search with natural language queries.
+    Chat-based resume search with natural language queries using advanced RAG.
 
     Allows users to search for resumes using conversational queries like:
     - "Find me Python developers with 5+ years experience"
@@ -26,29 +26,26 @@ async def chat_search_resumes(request: ChatRequest):
     try:
         logger.info(f"Chat search request: {request.message}")
 
-        # Process the natural language query
-        processed_query = await _process_chat_query(request.message)
-
-        # Search for matching resumes
-        matches = await resume_service.search_resumes(
-            query=processed_query, top_k=request.top_k, filters=request.filters
+        # Use enhanced RAG search instead of basic keyword matching
+        matches, search_metadata = await rag_service.enhanced_search(
+            query=request.message, top_k=request.top_k, filters=request.filters
         )
 
-        # Generate a conversational response
-        response_message = await _generate_chat_response(
-            request.message, matches, processed_query
+        # Generate a conversational response using search metadata
+        response_message = await _generate_rag_response(
+            request.message, matches, search_metadata
         )
 
         response = ChatResponse(
             message=response_message,
-            query=processed_query,
+            query=search_metadata["expanded_query"],
             original_message=request.message,
             matches=matches,
             total_results=len(matches),
             success=True,
         )
 
-        logger.info(f"Chat search completed with {len(matches)} matches")
+        logger.info(f"Enhanced RAG search completed with {len(matches)} matches")
         return response
 
     except Exception as e:
@@ -59,20 +56,26 @@ async def chat_search_resumes(request: ChatRequest):
 @router.post("/analyze")
 async def analyze_query(message: str):
     """
-    Analyze a natural language query to understand search intent.
+    Analyze a natural language query to understand search intent using RAG.
 
     This endpoint helps users understand how their query will be processed.
     """
     try:
-        processed_query = await _process_chat_query(message)
+        # Use RAG service for advanced query analysis
+        expanded_query = await rag_service._expand_query(message)
+        search_intent = rag_service._analyze_intent(message)
+        search_variations = await rag_service._generate_search_variations(
+            expanded_query, search_intent
+        )
 
         # Extract key components from the query
         analysis = {
             "original_message": message,
-            "processed_query": processed_query,
+            "expanded_query": expanded_query,
+            "search_intent": search_intent,
+            "search_variations": search_variations,
             "extracted_keywords": _extract_keywords(message),
-            "search_intent": _analyze_search_intent(message),
-            "suggestions": _get_query_suggestions(message),
+            "suggestions": _get_rag_suggestions(search_intent),
         }
 
         return analysis
@@ -86,162 +89,218 @@ async def _process_chat_query(message: str) -> str:
     """
     Process natural language chat message into a search query.
 
-    This function extracts key search terms and requirements from
-    conversational text to create an effective vector search query.
+    Instead of keyword extraction, we'll use the message directly for
+    semantic search via embeddings, which is much more powerful for RAG.
     """
-    # For now, we'll use a simple keyword extraction approach
-    # In the future, this could be enhanced with LLM-based query processing
+    # Enhanced query processing for better semantic search
 
-    # Common patterns to extract
-    keywords = []
+    # Clean up the message and expand common abbreviations
+    processed_message = message.lower().strip()
 
-    # Technical skills
-    tech_skills = [
-        "python",
-        "java",
-        "javascript",
-        "react",
-        "angular",
-        "vue",
-        "node.js",
-        "aws",
-        "azure",
-        "gcp",
-        "docker",
-        "kubernetes",
-        "machine learning",
-        "data science",
-        "sql",
-        "mongodb",
-        "postgresql",
-        "ai",
-        "ml",
-        "deep learning",
-        "tensorflow",
-        "pytorch",
-        "pandas",
-        "numpy",
-        "fastapi",
-        "django",
-        "flask",
-        "spring",
-        "hibernate",
-        "microservices",
-        "rest",
-        "api",
-        "graphql",
-        "html",
-        "css",
-        "typescript",
-        "go",
-        "rust",
-        "c++",
-        "c#",
-        ".net",
-        "devops",
-        "ci/cd",
-        "jenkins",
-        "git",
-        "github",
-        "gitlab",
-    ]
+    # Expand common abbreviations and synonyms to improve matching
+    expansions = {
+        "ml": "machine learning",
+        "ai": "artificial intelligence",
+        "js": "javascript",
+        "ts": "typescript",
+        "db": "database",
+        "api": "application programming interface",
+        "ui": "user interface",
+        "ux": "user experience",
+        "fe": "frontend front end",
+        "be": "backend back end",
+        "fs": "fullstack full stack",
+        "devops": "development operations deployment infrastructure",
+        "ci/cd": "continuous integration continuous deployment",
+        "aws": "amazon web services cloud",
+        "gcp": "google cloud platform",
+        "k8s": "kubernetes container orchestration",
+        "docker": "containerization containers",
+        "react": "reactjs react.js frontend library",
+        "angular": "angularjs angular.js frontend framework",
+        "vue": "vuejs vue.js frontend framework",
+        "node": "nodejs node.js backend javascript",
+        "python": "python programming language",
+        "java": "java programming language",
+        "golang": "go programming language",
+        "c++": "cplusplus cpp programming language",
+        "c#": "csharp dotnet programming language",
+    }
 
-    # Experience levels
-    experience_levels = [
-        "junior",
-        "senior",
-        "lead",
-        "principal",
-        "architect",
-        "manager",
-        "director",
-        "entry level",
-        "mid level",
-        "experienced",
-    ]
+    # Apply expansions to make the query more comprehensive for semantic search
+    for abbrev, expansion in expansions.items():
+        if abbrev in processed_message:
+            processed_message = processed_message.replace(
+                abbrev, f"{abbrev} {expansion}"
+            )
 
-    # Industries/domains
-    industries = [
-        "fintech",
-        "healthcare",
-        "e-commerce",
-        "education",
-        "gaming",
-        "startup",
-        "enterprise",
-        "saas",
-        "mobile",
-        "web",
-        "backend",
-        "frontend",
-        "fullstack",
-        "full stack",
-    ]
+    # Add context for better semantic matching
+    context_enhanced_query = f"Resume candidate profile: {processed_message}"
 
-    message_lower = message.lower()
-
-    # Extract technical skills
-    for skill in tech_skills:
-        if skill in message_lower:
-            keywords.append(skill)
-
-    # Extract experience levels
-    for level in experience_levels:
-        if level in message_lower:
-            keywords.append(level)
-
-    # Extract industries
-    for industry in industries:
-        if industry in message_lower:
-            keywords.append(industry)
-
-    # Extract years of experience
-    import re
-
-    years_pattern = r"(\d+)\+?\s*years?"
-    years_matches = re.findall(years_pattern, message_lower)
-    for years in years_matches:
-        keywords.append(f"{years} years experience")
-
-    # If no specific keywords found, use the original message
-    if not keywords:
-        return message
-
-    # Combine keywords into a search query
-    processed_query = " ".join(keywords)
-
-    logger.info(f"Processed query: '{message}' -> '{processed_query}'")
-    return processed_query
+    logger.info(f"Enhanced query: '{message}' -> '{context_enhanced_query}'")
+    return context_enhanced_query
 
 
-async def _generate_chat_response(
-    original_message: str, matches: List[ResumeMatch], processed_query: str
+async def _generate_rag_response(
+    original_message: str, matches: List[ResumeMatch], search_metadata: Dict[str, Any]
 ) -> str:
-    """Generate a conversational response based on search results."""
+    """Generate a conversational response based on RAG search results and metadata."""
 
     if not matches:
-        return f"I couldn't find any resumes matching your request: '{original_message}'. Try using different keywords or broadening your search criteria."
+        intent = search_metadata.get("search_intent", {})
+        suggestions = []
 
-    if len(matches) == 1:
-        match = matches[0]
-        skills = (
-            ", ".join(match.extracted_info.skills[:5])
-            if match.extracted_info and match.extracted_info.skills
-            else "various skills"
+        if intent.get("specificity") == "high":
+            suggestions.append(
+                "Your query is very specific - try broadening the requirements"
+            )
+        if intent.get("primary_skills"):
+            alt_skills = [skill for skill in intent["primary_skills"][:3]]
+            suggestions.append(
+                f"Try searching for related skills like: {', '.join(alt_skills)}"
+            )
+
+        suggestion_text = (
+            "\n\nSuggestions:\n• " + "\n• ".join(suggestions) if suggestions else ""
         )
-        return f"I found 1 resume that matches your criteria. The candidate has experience with {skills} and seems like a good fit for your requirements."
 
+        return (
+            f"I couldn't find any resumes matching your request: '{original_message}'. "
+            f"I searched through {search_metadata.get('total_candidates_found', 0)} candidate profiles.{suggestion_text}"
+        )
+
+    # Analyze the search quality and results
+    total_matches = len(matches)
+    intent = search_metadata.get("search_intent", {})
+    unique_candidates = search_metadata.get("unique_candidates", total_matches)
+
+    # Extract insights from top matches
+    top_match = matches[0]
     top_skills = []
-    if matches[0].extracted_info and matches[0].extracted_info.skills:
-        top_skills = matches[0].extracted_info.skills[:3]
+    all_skills = set()
 
-    skills_text = (
-        f" The top candidate has experience with {', '.join(top_skills)}."
-        if top_skills
-        else ""
+    for match in matches[:3]:  # Analyze top 3 matches
+        if match.extracted_info and match.extracted_info.skills:
+            if match == top_match:
+                top_skills = match.extracted_info.skills[:5]
+            all_skills.update(match.extracted_info.skills)
+
+    # Generate contextual response based on search quality and intent
+    response_parts = []
+
+    # Quality assessment
+    best_score = matches[0].score if matches else 0
+    quality_desc = (
+        "excellent" if best_score > 0.8 else "good" if best_score > 0.6 else "potential"
     )
 
-    return f"I found {len(matches)} resumes that match your request.{skills_text} Here are the candidates ranked by relevance to your query."
+    if total_matches == 1:
+        response_parts.append(
+            f"I found 1 resume showing {quality_desc} alignment with your requirements."
+        )
+
+        if top_skills:
+            response_parts.append(
+                f"This candidate has experience with: {', '.join(top_skills[:3])}"
+            )
+            if len(top_skills) > 3:
+                response_parts.append(
+                    f"Plus {len(top_skills) - 3} other relevant skills."
+                )
+
+    else:
+        # Multiple matches - provide summary insights
+        high_confidence = sum(1 for m in matches if m.score > 0.7)
+
+        if unique_candidates != total_matches:
+            response_parts.append(
+                f"I found {unique_candidates} unique candidates with {total_matches} matching profile sections."
+            )
+        else:
+            response_parts.append(
+                f"I found {total_matches} candidates that match your requirements."
+            )
+
+        if high_confidence > 0:
+            response_parts.append(
+                f"{high_confidence} show strong alignment with your criteria."
+            )
+
+        # Highlight common skills across top candidates
+        if len(all_skills) > 0:
+            common_skills = list(all_skills)[:6]  # Top 6 skills
+            response_parts.append(
+                f"Key skills among these candidates: {', '.join(common_skills[:4])}"
+            )
+
+    # Add search methodology insight
+    search_variations = len(search_metadata.get("search_variations", []))
+    if search_variations > 1:
+        response_parts.append(
+            f"I used {search_variations} search variations to find the most relevant matches."
+        )
+
+    # Add quality and ranking information
+    if best_score > 0.8:
+        response_parts.append(
+            "These matches show strong semantic similarity to your requirements."
+        )
+    elif best_score > 0.6:
+        response_parts.append(
+            "These are relevant matches based on semantic analysis of your criteria."
+        )
+    else:
+        response_parts.append(
+            "These are the closest matches found using advanced search techniques."
+        )
+
+    # Add helpful context about intent understanding
+    if intent.get("primary_skills"):
+        detected_skills = intent["primary_skills"][:3]
+        response_parts.append(
+            f"I focused on candidates with: {', '.join(detected_skills)}"
+        )
+
+    if intent.get("experience_level") != "any":
+        response_parts.append(
+            f"Filtered for {intent['experience_level']} level experience."
+        )
+
+    return " ".join(response_parts)
+
+
+def _get_rag_suggestions(search_intent: Dict[str, Any]) -> List[str]:
+    """Generate suggestions to improve the search query based on RAG analysis."""
+    suggestions = []
+
+    specificity = search_intent.get("specificity", "medium")
+    primary_skills = search_intent.get("primary_skills", [])
+    experience_level = search_intent.get("experience_level", "any")
+
+    if specificity == "low":
+        suggestions.append(
+            "Try adding specific technical skills to narrow down results"
+        )
+        suggestions.append("Consider mentioning years of experience or seniority level")
+
+    if not primary_skills:
+        suggestions.append("Add specific programming languages or technologies")
+
+    if experience_level == "any":
+        suggestions.append("Specify the seniority level (junior, senior, lead, etc.)")
+
+    if len(primary_skills) > 5:
+        suggestions.append(
+            "Consider focusing on the most important 3-4 skills for better results"
+        )
+
+    domain = search_intent.get("domain", "general")
+    if domain == "general":
+        suggestions.append(
+            "Mention the industry or domain if relevant (fintech, healthcare, etc.)"
+        )
+
+    return suggestions
 
 
 def _extract_keywords(message: str) -> List[str]:

@@ -145,6 +145,32 @@ class VectorManager:
             logger.error(f"Error storing vectors: {e}")
             raise
 
+    def _sanitize_metadata_for_pinecone(
+        self, metadata: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """Sanitize metadata for Pinecone storage (convert unsupported types)."""
+        sanitized = {}
+
+        for key, value in metadata.items():
+            if value is None:
+                # Skip None values entirely as Pinecone doesn't accept null
+                continue
+            elif isinstance(value, (str, int, float, bool)):
+                sanitized[key] = value
+            elif isinstance(value, list):
+                # Convert list to string representation for Pinecone
+                sanitized[key] = str(value)
+            elif isinstance(value, dict):
+                # Convert dict to string representation for Pinecone
+                sanitized[key] = str(value)
+            elif hasattr(value, "isoformat"):  # datetime objects
+                sanitized[key] = value.isoformat()
+            else:
+                # Convert other types to string
+                sanitized[key] = str(value)
+
+        return sanitized
+
     async def _store_in_pinecone(
         self, embeddings: List[List[float]], metadata: List[Dict[str, Any]]
     ) -> List[str]:
@@ -155,7 +181,13 @@ class VectorManager:
 
             for i, (embedding, meta) in enumerate(zip(embeddings, metadata)):
                 vector_id = f"resume_{self.vector_counter}_{i}"
-                vectors.append({"id": vector_id, "values": embedding, "metadata": meta})
+                # Sanitize metadata for Pinecone compatibility
+                sanitized_meta = self._sanitize_metadata_for_pinecone(meta)
+                logger.debug(f"Original metadata keys: {list(meta.keys())}")
+                logger.debug(f"Sanitized metadata keys: {list(sanitized_meta.keys())}")
+                vectors.append(
+                    {"id": vector_id, "values": embedding, "metadata": sanitized_meta}
+                )
                 vector_ids.append(vector_id)
 
             self.pinecone_index.upsert(vectors=vectors)
