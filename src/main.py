@@ -1,6 +1,5 @@
 """Main FastAPI application for the Resume Indexer."""
 
-import logging
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -12,13 +11,16 @@ from core.vector_db import vector_manager
 from controllers import resume_router, health_router, chat_router
 from exceptions.custom_exceptions import ResumeIndexerException
 from services.resume_service import resume_service
+from utils.logger import configure_application_logging, get_logger
 
-# Configure logging
-logging.basicConfig(
-    level=getattr(logging, settings.log_level.upper()),
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+# Configure application-wide logging with colors
+configure_application_logging(
+    level=settings.log_level.upper(),
+    include_colors=True,
+    log_file=None,  # Can be configured to log to file if needed
 )
-logger = logging.getLogger(__name__)
+
+logger = get_logger(__name__)
 
 
 @asynccontextmanager

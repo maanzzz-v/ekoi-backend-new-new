@@ -1,6 +1,5 @@
 """Health check and system status endpoints."""
 
-import logging
 from fastapi import APIRouter
 from fastapi.responses import JSONResponse
 
@@ -8,8 +7,9 @@ from config.settings import settings
 from core.database import db_manager
 from core.vector_db import vector_manager
 from services.llm_service import llm_service
+from utils.logger import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 router = APIRouter(prefix="/api/v1/health", tags=["health"])
 

@@ -1,14 +1,14 @@
 """Chat-based resume search API endpoints."""
 
-import logging
 from typing import List, Dict, Any
 from fastapi import APIRouter
 
 from models.schemas import ChatRequest, ChatResponse, ResumeMatch
 from services.rag_service import rag_service
 from exceptions.custom_exceptions import create_http_exception
+from utils.logger import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 router = APIRouter(prefix="/api/v1/chat", tags=["chat"])
 

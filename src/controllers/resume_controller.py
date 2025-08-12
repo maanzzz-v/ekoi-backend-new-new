@@ -1,9 +1,8 @@
 """Resume upload and processing API endpoints."""
 
-import logging
 import time
 from typing import List
-from fastapi import APIRouter, UploadFile, File, HTTPException, Depends, Query
+from fastapi import APIRouter, UploadFile, File, HTTPException, Query
 from fastapi.responses import JSONResponse
 
 from models.schemas import UploadResponse, SearchRequest, SearchResponse
@@ -14,8 +13,9 @@ from exceptions.custom_exceptions import (
     DatabaseError,
     create_http_exception,
 )
+from utils.logger import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
 router = APIRouter(prefix="/api/v1/resumes", tags=["resumes"])
 
