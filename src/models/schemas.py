@@ -164,7 +164,7 @@ class ChatRequest(BaseModel):
 
 
 class ChatResponse(BaseModel):
-    """Response model for chat-based resume search."""
+    """Enhanced response model for chat-based resume search with UI optimization."""
 
     message: str = Field(..., description="Conversational response")
     query: str = Field(..., description="Processed search query")
@@ -173,3 +173,22 @@ class ChatResponse(BaseModel):
     total_results: int
     success: bool = True
     session_id: Optional[str] = Field(default=None, description="Session ID if search was performed in a session")
+    
+    # UI Optimization fields
+    ui_components: Optional[Dict[str, Any]] = Field(default=None, description="Structured UI components for frontend")
+    conversation_flow: Optional[Dict[str, Any]] = Field(default=None, description="Conversation flow suggestions")
+    quick_actions: Optional[List[Dict[str, str]]] = Field(default=None, description="Quick action buttons for UI")
+    response_metadata: Optional[Dict[str, Any]] = Field(default=None, description="Response optimization metadata")
+
+
+class OptimizedFollowUpResponse(BaseModel):
+    """Enhanced response model for follow-up questions with UI optimization."""
+    
+    session_id: str
+    question: str
+    answer: str
+    ui_components: Optional[Dict[str, Any]] = Field(default=None, description="UI components for display")
+    conversation_flow: Optional[Dict[str, Any]] = Field(default=None, description="Next conversation suggestions")
+    quick_actions: Optional[List[Dict[str, str]]] = Field(default=None, description="Quick actions for follow-up")
+    response_metadata: Optional[Dict[str, Any]] = Field(default=None, description="Response metadata")
+    success: bool = True
