@@ -1,10 +1,16 @@
-"""Chat-based resume search API endpoints."""
+"""Chat-based resume search API endpoints with session management."""
 
 from typing import List, Dict, Any
-from fastapi import APIRouter
+from fastapi import APIRouter, Query
 
-from models.schemas import ChatRequest, ChatResponse, ResumeMatch
+from models.schemas import (
+    ChatRequest, ChatResponse, ResumeMatch, CreateSessionRequest, 
+    AddMessageRequest, SessionResponse, SessionListResponse, 
+    FollowUpRequest, MessageType
+)
 from services.rag_service import rag_service
+from services.session_service import session_service
+from services.llm_service import llm_service
 from exceptions.custom_exceptions import create_http_exception
 from utils.logger import get_logger
 
@@ -463,3 +469,482 @@ def _get_query_suggestions(message: str) -> List[str]:
         suggestions.append("Try providing more details about the role requirements")
 
     return suggestions
+
+
+# ============================================================================
+# SESSION MANAGEMENT ENDPOINTS
+# ============================================================================
+
+@router.post("/sessions", response_model=SessionResponse)
+async def create_chat_session(request: CreateSessionRequest):
+    """
+    Create a new chat session for resume search conversations.
+    
+    This allows users to maintain conversation context across multiple searches
+    and follow-up questions.
+    """
+    try:
+        logger.info(f"Creating new chat session with title: {request.title}")
+        
+        session = await session_service.create_session(
+            title=request.title,
+            initial_message=request.initial_message
+        )
+        
+        return SessionResponse(
+            session=session,
+            message=f"Session '{session.title}' created successfully"
+        )
+        
+    except Exception as e:
+        logger.error(f"Error creating session: {e}")
+        raise create_http_exception(500, "Failed to create chat session")
+
+
+@router.get("/sessions", response_model=SessionListResponse)
+async def list_chat_sessions(
+    limit: int = Query(50, ge=1, le=100, description="Maximum number of sessions to return"),
+    skip: int = Query(0, ge=0, description="Number of sessions to skip"),
+    active_only: bool = Query(True, description="Only return active sessions")
+):
+    """
+    List all chat sessions with pagination.
+    
+    Returns sessions ordered by last update time (most recent first).
+    """
+    try:
+        sessions = await session_service.list_sessions(
+            limit=limit, 
+            skip=skip, 
+            active_only=active_only
+        )
+        
+        total = await session_service.get_session_count(active_only=active_only)
+        
+        return SessionListResponse(
+            sessions=sessions,
+            total=total
+        )
+        
+    except Exception as e:
+        logger.error(f"Error listing sessions: {e}")
+        raise create_http_exception(500, "Failed to retrieve sessions")
+
+
+@router.get("/sessions/{session_id}", response_model=SessionResponse)
+async def get_chat_session(session_id: str):
+    """
+    Get a specific chat session by ID.
+    
+    Returns the complete session including all messages and context.
+    """
+    try:
+        session = await session_service.get_session(session_id)
+        
+        if not session:
+            raise create_http_exception(404, "Session not found")
+        
+        return SessionResponse(
+            session=session,
+            message="Session retrieved successfully"
+        )
+        
+    except Exception as e:
+        if "404" in str(e):
+            raise
+        logger.error(f"Error getting session {session_id}: {e}")
+        raise create_http_exception(500, "Failed to retrieve session")
+
+
+@router.post("/sessions/{session_id}/search", response_model=ChatResponse)
+async def search_in_session(session_id: str, request: ChatRequest):
+    """
+    Perform a resume search within a specific chat session.
+    
+    This maintains conversation context and adds both the user query and 
+    assistant response to the session history.
+    """
+    try:
+        # Verify session exists
+        session = await session_service.get_session(session_id)
+        if not session:
+            raise create_http_exception(404, "Session not found")
+        
+        logger.info(f"Session {session_id} search: {request.message}")
+        
+        # Add user message to session
+        await session_service.add_message(
+            session_id=session_id,
+            message_type=MessageType.USER,
+            content=request.message
+        )
+        
+        # Perform the search using enhanced RAG
+        matches, search_metadata = await rag_service.enhanced_search(
+            query=request.message, 
+            top_k=request.top_k, 
+            filters=request.filters
+        )
+        
+        # Generate response
+        response_message = await _generate_rag_response(
+            request.message, matches, search_metadata
+        )
+        
+        # Add assistant response to session
+        await session_service.add_message(
+            session_id=session_id,
+            message_type=MessageType.ASSISTANT,
+            content=response_message,
+            metadata={
+                "search_results": [match.id for match in matches],
+                "search_metadata": search_metadata
+            }
+        )
+        
+        # Update session context with latest search results
+        await session_service.update_session_context(
+            session_id=session_id,
+            context={
+                "last_search": {
+                    "query": request.message,
+                    "results": [match.id for match in matches],
+                    "total_results": len(matches),
+                    "timestamp": search_metadata.get("timestamp")
+                }
+            }
+        )
+        
+        response = ChatResponse(
+            message=response_message,
+            query=search_metadata["expanded_query"],
+            original_message=request.message,
+            matches=matches,
+            total_results=len(matches),
+            success=True,
+            session_id=session_id
+        )
+        
+        return response
+        
+    except Exception as e:
+        if "404" in str(e):
+            raise
+        logger.error(f"Error in session search {session_id}: {e}")
+        raise create_http_exception(500, "Search failed")
+
+
+@router.post("/sessions/{session_id}/followup")
+async def ask_followup_question(session_id: str, request: FollowUpRequest):
+    """
+    Ask follow-up questions about previous search results.
+    
+    Examples:
+    - "Why were these candidates selected?"
+    - "What are the key strengths of the top candidate?"
+    - "How do these candidates compare in terms of experience?"
+    - "Which candidate would be best for a startup environment?"
+    """
+    try:
+        # Verify session exists
+        session = await session_service.get_session(session_id)
+        if not session:
+            raise create_http_exception(404, "Session not found")
+        
+        logger.info(f"Follow-up question in session {session_id}: {request.question}")
+        
+        # Add user question to session
+        await session_service.add_message(
+            session_id=session_id,
+            message_type=MessageType.USER,
+            content=request.question
+        )
+        
+        # Get context from session (previous search results)
+        context = session.context or {}
+        last_search = context.get("last_search", {})
+        
+        if not last_search.get("results"):
+            # No previous search results to analyze
+            response_message = "I don't have any recent search results to analyze. Please perform a resume search first, then I can answer follow-up questions about the candidates."
+        else:
+            # Generate follow-up response based on previous results and current question
+            response_message = await _generate_followup_response(
+                question=request.question,
+                previous_results=last_search.get("results", []),
+                session_context=context,
+                session_messages=session.messages
+            )
+        
+        # Add assistant response to session
+        await session_service.add_message(
+            session_id=session_id,
+            message_type=MessageType.ASSISTANT,
+            content=response_message,
+            metadata={
+                "followup_question": request.question,
+                "analyzed_results": last_search.get("results", [])
+            }
+        )
+        
+        return {
+            "session_id": session_id,
+            "question": request.question,
+            "answer": response_message,
+            "success": True
+        }
+        
+    except Exception as e:
+        if "404" in str(e):
+            raise
+        logger.error(f"Error in follow-up question {session_id}: {e}")
+        raise create_http_exception(500, "Failed to process follow-up question")
+
+
+@router.delete("/sessions/{session_id}")
+async def delete_chat_session(session_id: str):
+    """
+    Delete (deactivate) a chat session.
+    
+    This marks the session as inactive rather than permanently deleting it.
+    """
+    try:
+        success = await session_service.delete_session(session_id)
+        
+        if not success:
+            raise create_http_exception(404, "Session not found")
+        
+        return {
+            "session_id": session_id,
+            "message": "Session deleted successfully",
+            "success": True
+        }
+        
+    except Exception as e:
+        if "404" in str(e):
+            raise
+        logger.error(f"Error deleting session {session_id}: {e}")
+        raise create_http_exception(500, "Failed to delete session")
+
+
+# ============================================================================
+# HELPER FUNCTIONS FOR FOLLOW-UP QUESTIONS
+# ============================================================================
+
+async def _generate_followup_response(
+    question: str, 
+    previous_results: List[str], 
+    session_context: Dict[str, Any],
+    session_messages: List[Any]
+) -> str:
+    """Generate intelligent responses to follow-up questions about search results."""
+    try:
+        # Get the actual resume data for analysis
+        from services.resume_service import resume_service
+        
+        resume_data = []
+        for resume_id in previous_results[:5]:  # Limit to top 5 for analysis
+            resume = await resume_service.get_resume_by_id(resume_id)
+            if resume:
+                resume_data.append(resume)
+        
+        if not resume_data:
+            return "I couldn't retrieve the resume data for analysis. Please try searching again."
+        
+        # Analyze the question type and generate appropriate response
+        question_lower = question.lower()
+        
+        if any(word in question_lower for word in ["why", "reason", "selected", "chosen"]):
+            return _explain_selection_criteria(resume_data, session_context)
+        
+        elif any(word in question_lower for word in ["strength", "strong", "best", "top"]):
+            return _analyze_candidate_strengths(resume_data)
+        
+        elif any(word in question_lower for word in ["compare", "comparison", "difference"]):
+            return _compare_candidates(resume_data)
+        
+        elif any(word in question_lower for word in ["startup", "environment", "culture", "fit"]):
+            return _analyze_cultural_fit(resume_data, question)
+        
+        elif any(word in question_lower for word in ["experience", "years", "senior", "junior"]):
+            return _analyze_experience_levels(resume_data)
+        
+        elif any(word in question_lower for word in ["skill", "technology", "tech", "technical"]):
+            return _analyze_technical_skills(resume_data)
+        
+        else:
+            # General analysis
+            return _provide_general_analysis(resume_data, question)
+    
+    except Exception as e:
+        logger.error(f"Error generating follow-up response: {e}")
+        return "I encountered an error while analyzing the candidates. Please try rephrasing your question."
+
+
+def _explain_selection_criteria(resume_data: List[Dict], context: Dict) -> str:
+    """Explain why these candidates were selected."""
+    explanations = []
+    
+    for i, resume in enumerate(resume_data[:3], 1):
+        name = resume.get("parsed_info", {}).get("name", f"Candidate {i}")
+        skills = resume.get("parsed_info", {}).get("skills", [])
+        experience = resume.get("parsed_info", {}).get("experience", [])
+        
+        key_skills = skills[:5] if skills else []
+        exp_summary = f"{len(experience)} role(s)" if experience else "Limited experience data"
+        
+        explanations.append(
+            f"**{name}**: Selected for {', '.join(key_skills[:3])} skills "
+            f"and {exp_summary}. Strong technical profile."
+        )
+    
+    return f"Here's why these candidates were selected:\n\n" + "\n\n".join(explanations)
+
+
+def _analyze_candidate_strengths(resume_data: List[Dict]) -> str:
+    """Analyze the key strengths of candidates."""
+    analyses = []
+    
+    for i, resume in enumerate(resume_data[:3], 1):
+        name = resume.get("parsed_info", {}).get("name", f"Candidate {i}")
+        skills = resume.get("parsed_info", {}).get("skills", [])
+        summary = resume.get("parsed_info", {}).get("summary", "")
+        
+        # Identify key strengths
+        strengths = []
+        if len(skills) > 10:
+            strengths.append(f"Diverse skill set ({len(skills)} skills)")
+        
+        if any(skill.lower() in ["python", "java", "javascript"] for skill in skills):
+            strengths.append("Strong programming background")
+        
+        if any(skill.lower() in ["aws", "azure", "docker", "kubernetes"] for skill in skills):
+            strengths.append("Cloud & DevOps expertise")
+        
+        if "senior" in summary.lower() or "lead" in summary.lower():
+            strengths.append("Senior-level experience")
+        
+        strength_text = ", ".join(strengths) if strengths else "Solid technical foundation"
+        analyses.append(f"**{name}**: {strength_text}")
+    
+    return f"Key strengths of the top candidates:\n\n" + "\n\n".join(analyses)
+
+
+def _compare_candidates(resume_data: List[Dict]) -> str:
+    """Compare candidates across different dimensions."""
+    if len(resume_data) < 2:
+        return "I need at least 2 candidates to make a comparison."
+    
+    comparison = "**Candidate Comparison:**\n\n"
+    
+    # Compare skills diversity
+    comparison += "**Skill Diversity:**\n"
+    for i, resume in enumerate(resume_data[:3], 1):
+        name = resume.get("parsed_info", {}).get("name", f"Candidate {i}")
+        skills_count = len(resume.get("parsed_info", {}).get("skills", []))
+        comparison += f"• {name}: {skills_count} skills\n"
+    
+    # Compare experience
+    comparison += "\n**Experience Overview:**\n"
+    for i, resume in enumerate(resume_data[:3], 1):
+        name = resume.get("parsed_info", {}).get("name", f"Candidate {i}")
+        experience = resume.get("parsed_info", {}).get("experience", [])
+        exp_count = len(experience)
+        comparison += f"• {name}: {exp_count} role(s) listed\n"
+    
+    return comparison
+
+
+def _analyze_cultural_fit(resume_data: List[Dict], question: str) -> str:
+    """Analyze candidates for cultural/environmental fit."""
+    environment = "startup" if "startup" in question.lower() else "corporate"
+    
+    analysis = f"**Candidates for {environment} environment:**\n\n"
+    
+    for i, resume in enumerate(resume_data[:3], 1):
+        name = resume.get("parsed_info", {}).get("name", f"Candidate {i}")
+        skills = resume.get("parsed_info", {}).get("skills", [])
+        summary = resume.get("parsed_info", {}).get("summary", "")
+        
+        fit_indicators = []
+        
+        if environment == "startup":
+            if any(skill.lower() in ["javascript", "python", "react", "node"] for skill in skills):
+                fit_indicators.append("Full-stack capabilities")
+            if any(skill.lower() in ["aws", "docker", "ci/cd"] for skill in skills):
+                fit_indicators.append("DevOps/Cloud skills")
+            if len(skills) > 8:
+                fit_indicators.append("Versatile skill set")
+        
+        fit_text = ", ".join(fit_indicators) if fit_indicators else "General technical skills"
+        analysis += f"**{name}**: {fit_text}\n"
+    
+    return analysis
+
+
+def _analyze_experience_levels(resume_data: List[Dict]) -> str:
+    """Analyze experience levels of candidates."""
+    analysis = "**Experience Level Analysis:**\n\n"
+    
+    for i, resume in enumerate(resume_data[:3], 1):
+        name = resume.get("parsed_info", {}).get("name", f"Candidate {i}")
+        experience = resume.get("parsed_info", {}).get("experience", [])
+        summary = resume.get("parsed_info", {}).get("summary", "")
+        
+        # Try to infer experience level
+        level = "Unknown"
+        if "senior" in summary.lower():
+            level = "Senior"
+        elif "lead" in summary.lower():
+            level = "Lead/Principal"
+        elif "junior" in summary.lower():
+            level = "Junior"
+        elif len(experience) >= 3:
+            level = "Mid to Senior"
+        elif len(experience) >= 1:
+            level = "Mid-level"
+        
+        analysis += f"**{name}**: {level} ({len(experience)} roles listed)\n"
+    
+    return analysis
+
+
+def _analyze_technical_skills(resume_data: List[Dict]) -> str:
+    """Analyze technical skills across candidates."""
+    analysis = "**Technical Skills Analysis:**\n\n"
+    
+    for i, resume in enumerate(resume_data[:3], 1):
+        name = resume.get("parsed_info", {}).get("name", f"Candidate {i}")
+        skills = resume.get("parsed_info", {}).get("skills", [])
+        
+        # Categorize skills
+        languages = [s for s in skills if s.lower() in ["python", "java", "javascript", "c++", "go", "rust"]]
+        frameworks = [s for s in skills if s.lower() in ["react", "django", "flask", "spring", "node.js"]]
+        cloud = [s for s in skills if s.lower() in ["aws", "azure", "docker", "kubernetes", "terraform"]]
+        
+        analysis += f"**{name}**:\n"
+        if languages:
+            analysis += f"  • Languages: {', '.join(languages[:3])}\n"
+        if frameworks:
+            analysis += f"  • Frameworks: {', '.join(frameworks[:3])}\n"
+        if cloud:
+            analysis += f"  • Cloud/DevOps: {', '.join(cloud[:3])}\n"
+        analysis += "\n"
+    
+    return analysis
+
+
+def _provide_general_analysis(resume_data: List[Dict], question: str) -> str:
+    """Provide general analysis when question type is unclear."""
+    analysis = f"**Analysis for: '{question}'**\n\n"
+    
+    for i, resume in enumerate(resume_data[:3], 1):
+        name = resume.get("parsed_info", {}).get("name", f"Candidate {i}")
+        skills = resume.get("parsed_info", {}).get("skills", [])
+        summary = resume.get("parsed_info", {}).get("summary", "")[:200] + "..."
+        
+        analysis += f"**{name}**:\n"
+        analysis += f"• Skills: {len(skills)} total ({', '.join(skills[:5])}{'...' if len(skills) > 5 else ''})\n"
+        analysis += f"• Summary: {summary}\n\n"
+    
+    return analysis

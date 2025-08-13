@@ -1,0 +1,27 @@
+John Doe
+Email: john.doe@example.com
+Phone: (555) 123-4567
+
+SUMMARY
+Experienced Software Engineer with 5+ years of experience in full-stack development, specializing in Python, JavaScript, and cloud technologies.
+
+SKILLS
+- Programming Languages: Python, JavaScript, Java, C++
+- Frameworks: Django, React, Node.js, Flask
+- Databases: PostgreSQL, MongoDB, Redis
+- Cloud: AWS, Azure, Docker, Kubernetes
+- Tools: Git, Jenkins, Terraform
+
+EXPERIENCE
+Senior Software Engineer | Tech Solutions Inc. | 2021 - Present
+- Developed and maintained web applications using Python and React
+- Implemented CI/CD pipelines using Jenkins and Docker
+- Led a team of 4 developers on multiple projects
+
+Software Engineer | Digital Innovations | 2019 - 2021
+- Built REST APIs using Django and Flask
+- Worked with PostgreSQL and MongoDB databases
+- Collaborated with cross-functional teams in Agile environment
+
+EDUCATION
+Bachelor of Science in Computer Science | State University | 2015 - 2019

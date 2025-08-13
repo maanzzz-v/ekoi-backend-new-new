@@ -1,6 +1,71 @@
 """Data models and schemas for the resume indexer."""
 
 from datetime import datetime
+from enum import Enum
+from typing import Dict, List, Optional, Any
+from pydantic import BaseModel, Field
+
+
+class MessageType(str, Enum):
+    """Types of messages in a chat session."""
+    USER = "user"
+    ASSISTANT = "assistant"
+    SYSTEM = "system"
+
+
+class ChatMessage(BaseModel):
+    """Individual message in a chat session."""
+    id: str = Field(..., description="Unique message ID")
+    type: MessageType = Field(..., description="Type of message")
+    content: str = Field(..., description="Message content")
+    timestamp: datetime = Field(default_factory=datetime.utcnow)
+    metadata: Optional[Dict[str, Any]] = Field(default=None, description="Additional message metadata")
+
+
+class ChatSession(BaseModel):
+    """Chat session for resume search conversations."""
+    id: str = Field(..., description="Unique session ID")
+    title: str = Field(..., description="Session title/summary")
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    messages: List[ChatMessage] = Field(default_factory=list)
+    context: Optional[Dict[str, Any]] = Field(default=None, description="Session context and state")
+    is_active: bool = Field(default=True)
+
+
+class CreateSessionRequest(BaseModel):
+    """Request to create a new chat session."""
+    title: Optional[str] = Field(default=None, description="Optional session title")
+    initial_message: Optional[str] = Field(default=None, description="Optional initial message")
+
+
+class AddMessageRequest(BaseModel):
+    """Request to add a message to an existing session."""
+    session_id: str = Field(..., description="Session ID")
+    message: str = Field(..., description="User message content")
+    context: Optional[Dict[str, Any]] = Field(default=None, description="Additional context")
+
+
+class SessionResponse(BaseModel):
+    """Response containing session information."""
+    session: ChatSession
+    success: bool = True
+    message: str = "Session operation successful"
+
+
+class SessionListResponse(BaseModel):
+    """Response containing list of sessions."""
+    sessions: List[ChatSession]
+    total: int
+    success: bool = True
+
+
+class FollowUpRequest(BaseModel):
+    """Request for follow-up questions about search results."""
+    question: str = Field(..., description="Follow-up question")
+    previous_search_results: Optional[List[str]] = Field(default=None, description="IDs of previously found resumes")
+
+from datetime import datetime
 from typing import List, Optional, Dict, Any
 from pydantic import BaseModel, Field
 
@@ -12,6 +77,7 @@ class ResumeMetadata(BaseModel):
     file_name: str
     file_type: str
     file_size: int
+    file_path: Optional[str] = None  # Path to the stored file
     upload_timestamp: datetime = Field(default_factory=datetime.utcnow)
     processed: bool = False
     processing_timestamp: Optional[datetime] = None
@@ -106,3 +172,4 @@ class ChatResponse(BaseModel):
     matches: List[ResumeMatch]
     total_results: int
     success: bool = True
+    session_id: Optional[str] = Field(default=None, description="Session ID if search was performed in a session")

@@ -78,18 +78,24 @@ class ResumeService:
 
     async def _process_single_file(self, file: UploadFile) -> Dict[str, Any]:
         """Process a single resume file."""
-        # Create temporary file
-        with tempfile.NamedTemporaryFile(
-            delete=False, suffix=f".{file.filename.split('.')[-1]}"
-        ) as temp_file:
-            temp_path = temp_file.name
-            content = await file.read()
-            temp_file.write(content)
+        # Create resumes directory if it doesn't exist
+        resumes_dir = os.path.join(os.getcwd(), "resumes")
+        os.makedirs(resumes_dir, exist_ok=True)
+        
+        # Create unique filename to avoid conflicts
+        timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+        file_extension = file.filename.split(".")[-1].lower()
+        safe_filename = f"{timestamp}_{file.filename}"
+        permanent_path = os.path.join(resumes_dir, safe_filename)
+        
+        # Save file permanently
+        content = await file.read()
+        with open(permanent_path, "wb") as f:
+            f.write(content)
 
         try:
             # Extract text from file
-            file_type = file.filename.split(".")[-1].lower()
-            extracted_text = FileProcessor.extract_text_from_file(temp_path, file_type)
+            extracted_text = FileProcessor.extract_text_from_file(permanent_path, file_extension)
 
             # Parse resume information
             parsed_info = ResumeParser.parse_resume_text(extracted_text)
@@ -97,10 +103,11 @@ class ResumeService:
             # Create metadata document
             metadata = ResumeMetadata(
                 file_name=file.filename,
-                file_type=file_type,
+                file_type=file_extension,
                 file_size=len(content),
                 extracted_text=extracted_text,
                 parsed_info=parsed_info,
+                file_path=permanent_path,  # Store the file path
             )
 
             # Store in MongoDB
@@ -115,7 +122,15 @@ class ResumeService:
             # Create metadata dict with the new ID for vector storage
             vector_metadata = metadata.dict(by_alias=True)
             vector_metadata["_id"] = str(result.inserted_id)
-            vector_ids = await self._store_in_vector_db(extracted_text, vector_metadata)
+            
+            # Store vectors with error handling
+            try:
+                vector_ids = await self._store_in_vector_db(extracted_text, vector_metadata)
+                if vector_ids is None:
+                    vector_ids = []
+            except Exception as vector_error:
+                logger.error(f"Vector storage failed for {file.filename}: {vector_error}")
+                vector_ids = []
 
             # Update metadata with vector IDs
             await collection.update_one(
@@ -135,12 +150,14 @@ class ResumeService:
                 "vector_ids": vector_ids,
                 "extracted_info": parsed_info,
                 "status": "success",
+                "file_path": permanent_path,
             }
 
-        finally:
-            # Clean up temporary file
-            if os.path.exists(temp_path):
-                os.unlink(temp_path)
+        except Exception as e:
+            # If processing fails, remove the saved file
+            if os.path.exists(permanent_path):
+                os.unlink(permanent_path)
+            raise e
 
     async def _store_in_vector_db(
         self, text: str, metadata: Dict[str, Any]
@@ -166,8 +183,15 @@ class ResumeService:
             return []
 
         logger.info(f"Storing {len(chunks)} chunks in vector database")
-        vector_ids = await self.vector_manager.store_vectors(chunks, chunk_metadata)
-        logger.info(f"Stored vectors with IDs: {vector_ids}")
+        try:
+            vector_ids = await self.vector_manager.store_vectors(chunks, chunk_metadata)
+            if vector_ids is None:
+                logger.warning("Vector manager returned None, using empty list")
+                vector_ids = []
+            logger.info(f"Stored vectors with IDs: {vector_ids}")
+        except Exception as e:
+            logger.error(f"Failed to store vectors: {e}")
+            vector_ids = []
 
         return vector_ids
 
@@ -329,6 +353,26 @@ class ResumeService:
             logger.error(f"Error deleting resume {resume_id}: {e}")
             return False
 
+    async def get_resume_by_id(self, resume_id: str) -> Optional[Dict[str, Any]]:
+        """Get a specific resume by ID."""
+        try:
+            from bson import ObjectId
+            
+            collection = db_manager.get_collection(self.collection_name)
+            
+            # Try to find by ObjectId first, then by string ID
+            resume_doc = await collection.find_one({"_id": ObjectId(resume_id)})
+            
+            if resume_doc:
+                resume_doc["_id"] = str(resume_doc["_id"])
+                return resume_doc
+            
+            return None
+            
+        except Exception as e:
+            logger.error(f"Error getting resume {resume_id}: {e}")
+            return None
+
     async def get_all_resumes(
         self, skip: int = 0, limit: int = 50
     ) -> List[Dict[str, Any]]:
@@ -349,6 +393,16 @@ class ResumeService:
         except Exception as e:
             logger.error(f"Error retrieving resumes: {e}")
             return []
+
+    async def get_total_resume_count(self) -> int:
+        """Get total count of resumes."""
+        try:
+            collection = db_manager.get_collection(self.collection_name)
+            count = await collection.count_documents({})
+            return count
+        except Exception as e:
+            logger.error(f"Error getting resume count: {e}")
+            return 0
 
 
 # Global resume service instance

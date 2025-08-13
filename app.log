@@ -1,0 +1,13 @@
+nohup: ignoring input
+[2025-08-13 10:17:26] [INFO    ] [resume-indexer      ] Logging configuration complete
+[2025-08-13 10:17:26] [INFO    ] [resume-indexer      ] Log level set to: INFO
+INFO:     Will watch for changes in these directories: ['/home/Maanu/Documents/RoR Internship/resume-index']
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+INFO:     Started reloader process [215132] using StatReload
+[2025-08-13 10:17:27] [INFO    ] [resume-indexer      ] Logging configuration complete
+[2025-08-13 10:17:27] [INFO    ] [resume-indexer      ] Log level set to: INFO
+[2025-08-13 10:17:27] [INFO    ] [resume-indexer      ] Logging configuration complete
+[2025-08-13 10:17:27] [INFO    ] [resume-indexer      ] Log level set to: INFO
+INFO:     Started server process [215254]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.

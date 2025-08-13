@@ -107,7 +107,12 @@ class OpenAIProvider(EmbeddingProvider):
 
             from openai import AsyncOpenAI
 
-            self.client = AsyncOpenAI(api_key=settings.openai_api_key)
+            # Initialize with timeout settings
+            self.client = AsyncOpenAI(
+                api_key=settings.openai_api_key,
+                timeout=60.0,  # 60 second timeout
+                max_retries=3   # Retry failed requests
+            )
 
             # Set dimension based on model
             if "ada-002" in settings.openai_model:
@@ -129,34 +134,67 @@ class OpenAIProvider(EmbeddingProvider):
             raise
 
     async def embed_text(self, text: str) -> List[float]:
-        """Generate embedding for single text."""
+        """Generate embedding for single text with retry logic."""
         if not self.client:
             raise RuntimeError("OpenAI client not initialized")
 
-        try:
-            response = await self.client.embeddings.create(
-                model=settings.openai_model, input=text
-            )
-            return response.data[0].embedding
+        max_retries = 3
+        for attempt in range(max_retries):
+            try:
+                response = await self.client.embeddings.create(
+                    model=settings.openai_model, 
+                    input=text,
+                    timeout=30.0  # 30 second timeout per request
+                )
+                return response.data[0].embedding
 
-        except Exception as e:
-            logger.error(f"OpenAI embedding error: {e}")
-            raise
+            except Exception as e:
+                logger.warning(f"OpenAI embedding attempt {attempt + 1} failed: {e}")
+                if attempt == max_retries - 1:
+                    logger.error(f"OpenAI embedding error after {max_retries} attempts: {e}")
+                    raise
+                await asyncio.sleep(2 ** attempt)  # Exponential backoff
 
     async def embed_texts(self, texts: List[str]) -> List[List[float]]:
-        """Generate embeddings for multiple texts."""
+        """Generate embeddings for multiple texts with batch processing and retry logic."""
         if not self.client:
             raise RuntimeError("OpenAI client not initialized")
 
-        try:
-            response = await self.client.embeddings.create(
-                model=settings.openai_model, input=texts
-            )
-            return [item.embedding for item in response.data]
+        # Process in smaller batches to avoid timeouts
+        batch_size = 50
+        all_embeddings = []
+        
+        for i in range(0, len(texts), batch_size):
+            batch = texts[i:i + batch_size]
+            max_retries = 3
+            
+            for attempt in range(max_retries):
+                try:
+                    response = await self.client.embeddings.create(
+                        model=settings.openai_model, 
+                        input=batch,
+                        timeout=60.0  # 60 second timeout for batches
+                    )
+                    batch_embeddings = [item.embedding for item in response.data]
+                    all_embeddings.extend(batch_embeddings)
+                    break  # Success, break retry loop
+                    
+                except Exception as e:
+                    logger.warning(f"OpenAI batch embedding attempt {attempt + 1} failed for batch {i//batch_size + 1}: {e}")
+                    if attempt == max_retries - 1:
+                        # If all retries failed, try processing individually
+                        logger.warning(f"Batch processing failed, trying individual processing for batch {i//batch_size + 1}")
+                        try:
+                            for text in batch:
+                                individual_embedding = await self.embed_text(text)
+                                all_embeddings.append(individual_embedding)
+                            break
+                        except Exception as individual_error:
+                            logger.error(f"Individual processing also failed: {individual_error}")
+                            raise e  # Raise original batch error
+                    await asyncio.sleep(2 ** attempt)  # Exponential backoff
 
-        except Exception as e:
-            logger.error(f"OpenAI batch embedding error: {e}")
-            raise
+        return all_embeddings
 
     def get_dimension(self) -> int:
         """Get embedding dimension."""

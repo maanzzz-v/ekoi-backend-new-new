@@ -3,7 +3,7 @@
 import time
 from typing import List
 from fastapi import APIRouter, UploadFile, File, HTTPException, Query
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, FileResponse
 
 from models.schemas import UploadResponse, SearchRequest, SearchResponse
 from services.resume_service import resume_service
@@ -122,12 +122,61 @@ async def list_resumes(
     ),
 ):
     """
-    List all uploaded resumes with pagination.
+    List all uploaded resumes with pagination and detailed information.
+    
+    Returns comprehensive information about each uploaded resume including:
+    - File details (name, type, size, upload time)
+    - Processing status
+    - Extracted information (name, email, skills, etc.)
+    - File path for access
     """
     try:
         resumes = await resume_service.get_all_resumes(skip=skip, limit=limit)
+        
+        # Get total count for better pagination info
+        total_count = await resume_service.get_total_resume_count()
+        
+        # Format the response with more useful information
+        formatted_resumes = []
+        for resume in resumes:
+            # Safely handle vector_ids which might be None
+            vector_ids = resume.get("vector_ids", [])
+            if vector_ids is None:
+                vector_ids = []
+            
+            formatted_resume = {
+                "id": str(resume.get("_id", "")),
+                "file_name": resume.get("file_name", ""),
+                "file_type": resume.get("file_type", ""),
+                "file_size": resume.get("file_size", 0),
+                "file_path": resume.get("file_path", ""),
+                "upload_timestamp": resume.get("upload_timestamp"),
+                "processed": resume.get("processed", False),
+                "processing_timestamp": resume.get("processing_timestamp"),
+                "extracted_info": resume.get("parsed_info", {}),
+                "has_vectors": bool(vector_ids),
+                "vector_count": len(vector_ids),
+            }
+            formatted_resumes.append(formatted_resume)
 
-        return {"resumes": resumes, "total": len(resumes), "skip": skip, "limit": limit}
+        return {
+            "resumes": formatted_resumes,
+            "pagination": {
+                "total": total_count,
+                "skip": skip,
+                "limit": limit,
+                "current_page": (skip // limit) + 1,
+                "total_pages": (total_count + limit - 1) // limit,
+                "has_next": skip + limit < total_count,
+                "has_previous": skip > 0,
+            },
+            "summary": {
+                "total_resumes": total_count,
+                "showing": len(formatted_resumes),
+                "processed": sum(1 for r in formatted_resumes if r["processed"]),
+                "unprocessed": sum(1 for r in formatted_resumes if not r["processed"]),
+            }
+        }
 
     except Exception as e:
         logger.error(f"Error listing resumes: {e}")
@@ -172,3 +221,35 @@ async def delete_resume(resume_id: str):
     except Exception as e:
         logger.error(f"Error deleting resume {resume_id}: {e}")
         raise create_http_exception(500, "Error occurred while deleting resume")
+
+
+@router.get("/{resume_id}/download")
+async def download_resume(resume_id: str):
+    """
+    Download the original resume file.
+    """
+    try:
+        import os
+        
+        resume = await resume_service.get_resume_by_id(resume_id)
+
+        if not resume:
+            raise create_http_exception(404, "Resume not found")
+
+        file_path = resume.get("file_path")
+        if not file_path or not os.path.exists(file_path):
+            raise create_http_exception(404, "Resume file not found on disk")
+
+        # Return the file for download
+        filename = resume.get("file_name", "resume")
+        return FileResponse(
+            path=file_path,
+            filename=filename,
+            media_type='application/octet-stream'
+        )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error downloading resume {resume_id}: {e}")
+        raise create_http_exception(500, "Error occurred while downloading resume")

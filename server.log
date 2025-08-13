@@ -1,0 +1,27 @@
+nohup: ignoring input
+[2025-08-13 12:11:13] [INFO    ] [resume-indexer      ] Logging configuration complete
+[2025-08-13 12:11:13] [INFO    ] [resume-indexer      ] Log level set to: INFO
+INFO:     Will watch for changes in these directories: ['/home/Maanu/Documents/RoR Internship/resume-index']
+INFO:     Uvicorn running on http://0.0.0.0:8000 (Press CTRL+C to quit)
+INFO:     Started reloader process [335172] using StatReload
+[2025-08-13 12:11:14] [INFO    ] [resume-indexer      ] Logging configuration complete
+[2025-08-13 12:11:14] [INFO    ] [resume-indexer      ] Log level set to: INFO
+[2025-08-13 12:11:14] [INFO    ] [resume-indexer      ] Logging configuration complete
+[2025-08-13 12:11:14] [INFO    ] [resume-indexer      ] Log level set to: INFO
+INFO:     Started server process [335286]
+INFO:     Waiting for application startup.
+First connection attempt failed: unknown error (_ssl.c:3036)
+INFO:     Application startup complete.
+WARNING:  StatReload detected changes in 'src/controllers/chat_controller.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [335286]
+[2025-08-13 12:15:08] [INFO    ] [resume-indexer      ] Logging configuration complete
+[2025-08-13 12:15:08] [INFO    ] [resume-indexer      ] Log level set to: INFO
+[2025-08-13 12:15:08] [INFO    ] [resume-indexer      ] Logging configuration complete
+[2025-08-13 12:15:08] [INFO    ] [resume-indexer      ] Log level set to: INFO
+INFO:     Started server process [340312]
+INFO:     Waiting for application startup.
+First connection attempt failed: unknown error (_ssl.c:3036)
+INFO:     Application startup complete.
