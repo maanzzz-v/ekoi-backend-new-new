@@ -63,7 +63,8 @@ class EnhancedRAGService:
         query: str, 
         top_k: int = 10, 
         filters: Optional[Dict[str, Any]] = None,
-        context: Optional[Dict[str, Any]] = None
+        context: Optional[Dict[str, Any]] = None,
+        enable_slack_notification: bool = True
     ) -> Tuple[List[ResumeMatch], Dict[str, Any]]:
         """
         Perform intelligent search with advanced query understanding.
@@ -73,6 +74,7 @@ class EnhancedRAGService:
             top_k: Number of results to return
             filters: Additional filters
             context: Previous conversation context
+            enable_slack_notification: Whether to send results to Slack after final ranking
             
         Returns:
             Tuple of (matches, enhanced_metadata)
@@ -99,6 +101,9 @@ class EnhancedRAGService:
         final_matches = await self._intelligent_rerank(
             query, matches, query_analysis, top_k
         )
+        
+        # Step 6: Send results to Slack after final ranking
+        await self._send_to_slack_if_enabled(query, final_matches, enhanced_metadata, enable_slack_notification)
         
         logger.info(f"Enhanced search completed: {len(final_matches)} intelligent matches")
         return final_matches, enhanced_metadata
@@ -531,6 +536,56 @@ class EnhancedRAGService:
             response += "✅ **Good matches** - Relevant candidates identified\n"
         
         return response
+
+    async def _send_to_slack_if_enabled(
+        self, 
+        query: str, 
+        final_matches: List[ResumeMatch], 
+        metadata: Dict[str, Any],
+        enabled: bool = True
+    ) -> bool:
+        """
+        Send final ranked results to Slack if enabled.
+        
+        Args:
+            query: Original search query
+            final_matches: Final ranked matches after re-ranking
+            metadata: Enhanced search metadata
+            enabled: Whether Slack notifications are enabled (default: True)
+            
+        Returns:
+            bool: True if sent successfully, False otherwise
+        """
+        if not enabled or not final_matches:
+            return False
+        
+        try:
+            # Import here to avoid circular imports and ensure it's only loaded when needed
+            from services.slack_notification_service import send_matches_to_slack
+            import asyncio
+            
+            # Send to Slack asynchronously (non-blocking)
+            task = asyncio.create_task(
+                send_matches_to_slack(
+                    matches=final_matches,
+                    search_query=query,
+                    metadata=metadata
+                )
+            )
+            
+            # Log the attempt
+            logger.info(f"Initiated Slack notification for {len(final_matches)} final ranked matches")
+            
+            # Don't wait for completion to avoid blocking the main response
+            # The task will complete in the background
+            return True
+            
+        except ImportError:
+            logger.warning("Slack service not available - skipping notification")
+            return False
+        except Exception as e:
+            logger.error(f"Error sending to Slack: {e}")
+            return False
 
 
 # Global enhanced RAG service instance
