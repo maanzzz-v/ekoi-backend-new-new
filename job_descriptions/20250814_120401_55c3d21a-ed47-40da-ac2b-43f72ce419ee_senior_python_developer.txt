@@ -1,0 +1,33 @@
+
+Senior Python Developer - Remote Position
+
+We are seeking a Senior Python Developer with 5+ years of experience to join our growing team.
+
+REQUIRED QUALIFICATIONS:
+- Bachelor's degree in Computer Science or related field
+- 5+ years of experience with Python programming
+- Strong experience with Django or Flask web frameworks
+- Experience with RESTful API development and integration
+- Proficiency with PostgreSQL or MySQL databases
+- Knowledge of AWS cloud services (EC2, S3, RDS)
+- Experience with Docker containerization
+- Familiarity with Git version control
+- Strong problem-solving and debugging skills
+
+PREFERRED QUALIFICATIONS:
+- Experience with React.js or Angular frontend frameworks
+- Knowledge of machine learning libraries (pandas, scikit-learn, TensorFlow)
+- Experience with CI/CD pipelines (Jenkins, GitLab CI)
+- Previous startup environment experience
+- Experience with microservices architecture
+- Knowledge of Redis or other caching solutions
+
+RESPONSIBILITIES:
+- Design and develop scalable backend systems
+- Build and maintain RESTful APIs
+- Collaborate with frontend developers and product team
+- Write clean, maintainable, and well-tested code
+- Participate in code reviews and technical discussions
+- Mentor junior developers
+
+We offer competitive salary, equity options, remote work flexibility, and comprehensive benefits.

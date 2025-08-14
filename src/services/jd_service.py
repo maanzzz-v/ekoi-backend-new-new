@@ -176,12 +176,24 @@ class JDService:
         
         logger.info(f"Searching resumes using JD from session {session_id}")
         
-        # Use the existing resume service search with JD text as query
-        matches = await resume_service.search_resumes(
-            query=jd_text, 
-            top_k=top_k, 
-            filters=filters
-        )
+        # Use the RAG service for better results instead of basic resume service
+        try:
+            from services.rag_service import rag_service
+            matches, search_metadata = await rag_service.enhanced_search(
+                query=jd_text, 
+                top_k=top_k, 
+                filters=filters
+            )
+            logger.info(f"RAG search returned {len(matches)} matches")
+        except Exception as e:
+            logger.warning(f"RAG search failed, falling back to basic search: {e}")
+            # Fallback to resume service if RAG fails
+            matches = await resume_service.search_resumes(
+                query=jd_text, 
+                top_k=top_k, 
+                filters=filters
+            )
+            search_metadata = {"fallback_used": True}
         
         # Store search results in session history
         await self._store_search_results_in_session(session_id, matches, jd_doc)
@@ -191,7 +203,8 @@ class JDService:
             "jd_id": str(jd_doc["_id"]),
             "jd_text": jd_text,
             "matches": matches,
-            "total_results": len(matches)
+            "total_results": len(matches),
+            "search_metadata": search_metadata
         }
 
     async def get_jd_by_session(self, session_id: str) -> Optional[Dict[str, Any]]:
@@ -212,7 +225,48 @@ class JDService:
             # Import here to avoid circular imports
             from services.session_service import session_service
             
+            logger.info(f"Starting to store {len(matches)} search results in session {session_id}")
+            
             # Convert matches to serializable format
+            serialized_matches = []
+            for i, match in enumerate(matches):
+                try:
+                    # Handle different match object types
+                    if hasattr(match, 'dict'):
+                        # Pydantic model
+                        match_data = match.dict()
+                    elif hasattr(match, '__dict__'):
+                        # Regular object
+                        match_data = {
+                            'id': getattr(match, 'id', f'unknown_{i}'),
+                            'file_name': getattr(match, 'file_name', 'unknown_file'),
+                            'score': getattr(match, 'score', 0.0),
+                            'extracted_info': getattr(match, 'extracted_info', {}).dict() if hasattr(getattr(match, 'extracted_info', {}), 'dict') else getattr(match, 'extracted_info', {}),
+                            'relevant_text': getattr(match, 'relevant_text', '')
+                        }
+                    else:
+                        # Dictionary
+                        match_data = {
+                            'id': match.get('id', f'unknown_{i}'),
+                            'file_name': match.get('file_name', 'unknown_file'),
+                            'score': match.get('score', 0.0),
+                            'extracted_info': match.get('extracted_info', {}),
+                            'relevant_text': match.get('relevant_text', '')
+                        }
+                    
+                    serialized_matches.append(match_data)
+                    
+                except Exception as match_error:
+                    logger.error(f"Error serializing match {i}: {match_error}")
+                    # Add a fallback entry
+                    serialized_matches.append({
+                        'id': f'error_match_{i}',
+                        'file_name': 'serialization_error',
+                        'score': 0.0,
+                        'extracted_info': {},
+                        'relevant_text': ''
+                    })
+            
             search_results = {
                 "jd_search_results": {
                     "timestamp": datetime.utcnow().isoformat(),
@@ -220,29 +274,27 @@ class JDService:
                     "jd_filename": jd_doc.get("file_name", ""),
                     "jd_text": jd_doc.get("extracted_text", ""),
                     "total_matches": len(matches),
-                    "matches": [
-                        {
-                            "id": match.id,
-                            "file_name": match.file_name,
-                            "score": match.score,
-                            "extracted_info": match.extracted_info.dict() if match.extracted_info else None,
-                            "relevant_text": match.relevant_text
-                        }
-                        for match in matches
-                    ]
+                    "matches": serialized_matches
                 }
             }
             
+            logger.info(f"Serialized {len(serialized_matches)} matches for storage")
+            
             # Update session context
-            await session_service.update_session_context(
+            success = await session_service.update_session_context(
                 session_id=session_id,
                 context=search_results
             )
             
-            logger.info(f"Stored {len(matches)} search results in session {session_id}")
+            if success:
+                logger.info(f"Successfully stored {len(matches)} search results in session {session_id}")
+            else:
+                logger.error(f"Failed to store search results in session {session_id}")
             
         except Exception as e:
             logger.error(f"Error storing search results in session: {e}")
+            import traceback
+            logger.error(f"Storage error traceback: {traceback.format_exc()}")
 
     def _validate_file(self, file: UploadFile) -> bool:
         """Validate uploaded JD file."""

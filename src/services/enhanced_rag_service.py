@@ -6,7 +6,7 @@ from typing import List, Dict, Any, Optional, Tuple
 from services.resume_service import resume_service
 from services.rag_service import rag_service
 from services.llm_service import llm_service
-from controllers.agent_parameters_controller import get_agent_parameters, fetch_agent_parameters  # Assuming these functions exist
+from controllers.agent_parameters_controller import fetch_agent_parameters  # Import available function
 from models.schemas import ResumeMatch
 
 logger = logging.getLogger(__name__)

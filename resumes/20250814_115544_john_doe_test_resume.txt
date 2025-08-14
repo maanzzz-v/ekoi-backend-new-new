@@ -1,0 +1,13 @@
+
+        John Doe
+        Software Engineer
+        Email: john.doe@example.com
+        Phone: (555) 123-4567
+        
+        EXPERIENCE:
+        - Senior Python Developer at TechCorp (2020-2023)
+        - Backend Engineer at StartupXYZ (2018-2020)
+        
+        SKILLS:
+        Python, Django, PostgreSQL, AWS, Docker
+        

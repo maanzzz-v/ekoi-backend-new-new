@@ -1,0 +1,14 @@
+
+Carol Davis
+Software Engineer
+Email: john.doe@example.com
+Phone: +1-555-123-4567
+
+EXPERIENCE:
+- 5 years Python development
+- Django web framework
+- RESTful API design
+- PostgreSQL databases
+
+SKILLS:
+Python, Django, REST APIs, PostgreSQL, Git

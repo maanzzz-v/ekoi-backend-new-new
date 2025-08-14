@@ -1,0 +1,22 @@
+
+Senior Software Engineer - Python/Django
+
+We are seeking a Senior Software Engineer with 5+ years of experience in Python development.
+
+REQUIREMENTS:
+- Bachelor's degree in Computer Science or related field
+- 5+ years of experience with Python programming
+- Strong experience with Django web framework
+- Experience with RESTful API development
+- Knowledge of PostgreSQL and database design
+- Familiarity with AWS cloud services
+- Experience with Docker and containerization
+- Git version control experience
+
+PREFERRED:
+- Experience with React.js or modern JavaScript frameworks
+- Knowledge of machine learning libraries (pandas, scikit-learn)
+- Experience with CI/CD pipelines
+- Startup environment experience
+
+We offer competitive salary, equity, and remote work options.

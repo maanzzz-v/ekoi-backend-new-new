@@ -1,0 +1,29 @@
+
+Senior Full Stack Developer Position
+
+We are looking for an experienced Full Stack Developer to join our team.
+
+REQUIRED SKILLS:
+- 5+ years of Python programming experience
+- Strong experience with Django or Flask frameworks
+- Frontend development with React.js or Angular
+- RESTful API design and development
+- Database experience (PostgreSQL, MongoDB)
+- Version control with Git
+- AWS cloud services experience
+- Docker containerization knowledge
+
+PREFERRED QUALIFICATIONS:
+- Bachelor's degree in Computer Science
+- Experience with microservices architecture
+- CI/CD pipeline setup and management
+- Machine learning or data science background
+- Startup or agile development environment experience
+
+RESPONSIBILITIES:
+- Design and develop scalable web applications
+- Collaborate with cross-functional teams
+- Mentor junior developers
+- Participate in code reviews and technical discussions
+
+We offer competitive salary, equity options, and remote work flexibility.

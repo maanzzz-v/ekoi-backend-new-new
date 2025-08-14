@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException
-from src.models.schemas import AgentParameter
+from models.schemas import AgentParameter
 from typing import List
 
 router = APIRouter(prefix="/api/v1/agent-parameters", tags=["agent-parameters"])

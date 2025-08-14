@@ -83,6 +83,7 @@ class ResumeMetadata(BaseModel):
     processed: bool = False
     processing_timestamp: Optional[datetime] = None
     vector_ids: Optional[List[str]] = None  # Pinecone vector IDs
+    content_hash: Optional[str] = None  # MD5 hash for duplicate detection
 
     # Extracted information
     extracted_text: Optional[str] = None
@@ -202,3 +203,35 @@ class AgentParameter(BaseModel):
     parameter2: int = Field(..., description="Weight for parameter 2")
     parameter3: int = Field(..., description="Weight for parameter 3")
     parameter4: int = Field(..., description="Weight for parameter 4")
+
+
+class JobDescriptionMetadata(BaseModel):
+    """Job description metadata model for MongoDB storage."""
+    
+    id: Optional[str] = Field(default=None, alias="_id")
+    file_name: str
+    file_type: str
+    file_size: int
+    upload_timestamp: datetime = Field(default_factory=datetime.utcnow)
+    processed: bool = False
+    processing_timestamp: Optional[datetime] = None
+    
+    # Extracted information
+    extracted_text: Optional[str] = None
+    parsed_requirements: Optional[Dict[str, Any]] = None
+    
+    # Session linkage
+    session_id: Optional[str] = None
+
+    def dict(self, **kwargs):
+        """Override dict method to exclude None _id values."""
+        data = super().dict(**kwargs)
+        # Remove _id if it's None to prevent MongoDB issues
+        if "_id" in data and data["_id"] is None:
+            del data["_id"]
+        return data
+
+    class Config:
+        """Pydantic config."""
+        populate_by_name = True
+        arbitrary_types_allowed = True

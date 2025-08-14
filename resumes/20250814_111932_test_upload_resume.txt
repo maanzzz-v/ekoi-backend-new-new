@@ -1,0 +1,18 @@
+
+John Doe
+Software Engineer
+Email: john.doe@email.com
+Phone: 123-456-7890
+
+EXPERIENCE:
+Senior Software Engineer at ABC Company (2020-2023)
+- Developed web applications using Python and Django
+- Implemented REST APIs and microservices
+- Worked with AWS cloud services
+
+SKILLS:
+Python, Django, JavaScript, React, AWS, Docker, PostgreSQL
+
+EDUCATION:
+Bachelor of Science in Computer Science
+University of Technology (2016-2020)

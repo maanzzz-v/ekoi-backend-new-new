@@ -144,20 +144,33 @@ class SessionService:
         try:
             collection = db_manager.get_collection(self.collection_name)
             
+            # First check if session exists
+            session_exists = await collection.find_one({"_id": session_id})
+            if not session_exists:
+                logger.error(f"Session {session_id} does not exist, cannot update context")
+                return False
+            
+            # Get existing context and merge with new data
+            existing_context = session_exists.get('context', {})
+            merged_context = {**existing_context, **context}
+            
             result = await collection.update_one(
                 {"_id": session_id},
                 {
                     "$set": {
-                        "context": context,
+                        "context": merged_context,
                         "updated_at": datetime.utcnow()
                     }
                 }
             )
             
+            logger.info(f"Session context update result: modified_count={result.modified_count}")
             return result.modified_count > 0
             
         except Exception as e:
             logger.error(f"Error updating session context {session_id}: {e}")
+            import traceback
+            logger.error(f"Update context traceback: {traceback.format_exc()}")
             return False
     
     async def delete_session(self, session_id: str) -> bool:

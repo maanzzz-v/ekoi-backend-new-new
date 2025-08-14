@@ -101,7 +101,7 @@ python test_enhanced_rag_slack.py
 ### Slack Token
 
 Your token is already configured in the service:
-`xoxb-9339590015462-9339599690838-UKKdPG6yiEjcagGiJ44mk1FP`
+`
 
 ### Channel
 

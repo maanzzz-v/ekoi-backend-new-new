@@ -30,6 +30,7 @@ class Settings(BaseSettings):
     # OpenAI settings
     openai_api_key: Optional[str] = Field(default=None, env="OPENAI_API_KEY")
     openai_model: str = Field(default="text-embedding-ada-002", env="OPENAI_MODEL")
+    openai_chat_model: str = Field(default="gpt-4-turbo-preview", env="OPENAI_CHAT_MODEL")
 
     # Gemini settings
     gemini_api_key: Optional[str] = Field(default=None, env="GEMINI_API_KEY")
@@ -60,6 +61,9 @@ class Settings(BaseSettings):
     # File upload settings
     max_file_size_mb: int = Field(default=10, env="MAX_FILE_SIZE_MB")
     allowed_file_types: str = Field(default="pdf,docx,txt", env="ALLOWED_FILE_TYPES")
+
+    # Slack settings
+    slack_token: Optional[str] = Field(default=None, env="SLACK_TOKEN")
 
     @property
     def allowed_file_types_list(self) -> List[str]:

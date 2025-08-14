@@ -1,0 +1,12 @@
+
+        Jane Smith
+        Data Scientist
+        Email: jane.smith@example.com
+        
+        EXPERIENCE:
+        - Senior Data Scientist at DataCorp (2019-2023)
+        - ML Engineer at AIStartup (2017-2019)
+        
+        SKILLS:
+        Python, Machine Learning, TensorFlow, Pandas
+        

@@ -2,6 +2,7 @@
 
 import logging
 import json
+import os
 from typing import List, Dict, Any, Optional
 from slack_sdk import WebClient
 from slack_sdk.errors import SlackApiError
@@ -9,6 +10,7 @@ from datetime import datetime
 
 from models.schemas import ResumeMatch
 from utils.logger import get_logger
+from config.settings import settings
 
 logger = get_logger(__name__)
 
@@ -16,8 +18,18 @@ logger = get_logger(__name__)
 class SlackNotificationService:
     """Service for sending resume search results to Slack channels."""
     
-    def __init__(self, slack_token: str = "xoxb-9339590015462-9339599690838-UKKdPG6yiEjcagGiJ44mk1FP"):
+    def __init__(self, slack_token: str = None):
         """Initialize Slack client with token."""
+        if slack_token is None:
+            # Try to get from settings first, then environment
+            try:
+                slack_token = settings.slack_token
+            except:
+                slack_token = os.getenv("SLACK_TOKEN")
+        
+        if not slack_token:
+            raise ValueError("Slack token must be provided either as parameter or SLACK_TOKEN environment variable")
+            
         self.client = WebClient(token=slack_token)
         self.default_channel = "#test_message"
     
@@ -262,8 +274,12 @@ class SlackNotificationService:
             return False
 
 
-# Global instance
-slack_notification_service = SlackNotificationService()
+# Global instance - Initialize with settings
+try:
+    slack_notification_service = SlackNotificationService(slack_token=settings.slack_token)
+except Exception as e:
+    logger.warning(f"Failed to initialize Slack service: {e}")
+    slack_notification_service = None
 
 
 # Example usage function

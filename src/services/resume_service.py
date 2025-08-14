@@ -3,7 +3,7 @@
 import logging
 import os
 import tempfile
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import List, Dict, Any, Optional
 from fastapi import UploadFile
 
@@ -100,6 +100,44 @@ class ResumeService:
             # Parse resume information
             parsed_info = ResumeParser.parse_resume_text(extracted_text)
 
+            # Check for existing file to prevent duplicates
+            collection = db_manager.get_collection(self.collection_name)
+            
+            # Enhanced duplicate detection with multiple criteria
+            # 1. Check for exact same filename and size (strict duplicate)
+            exact_duplicate = await collection.find_one({
+                "file_name": file.filename,
+                "file_size": len(content)
+            })
+            
+            # 2. Check for recent uploads with same name (within 60 seconds)
+            recent_time = datetime.utcnow() - timedelta(seconds=60)
+            recent_duplicate = await collection.find_one({
+                "file_name": file.filename,
+                "upload_timestamp": {"$gte": recent_time}
+            })
+            
+            # 3. Check for same content hash (most robust)
+            import hashlib
+            content_hash = hashlib.md5(content).hexdigest()
+            hash_duplicate = await collection.find_one({
+                "file_size": len(content),
+                "content_hash": content_hash
+            })
+            
+            if exact_duplicate or recent_duplicate or hash_duplicate:
+                # Remove the saved file since it's a duplicate
+                if os.path.exists(permanent_path):
+                    os.unlink(permanent_path)
+                
+                duplicate_type = "exact" if exact_duplicate else ("recent" if recent_duplicate else "content")
+                existing_id = str(exact_duplicate.get("_id") if exact_duplicate else 
+                                recent_duplicate.get("_id") if recent_duplicate else 
+                                hash_duplicate.get("_id"))
+                
+                logger.warning(f"Duplicate upload detected ({duplicate_type}): {file.filename} - existing ID: {existing_id}")
+                raise Exception(f"Duplicate file upload detected: {file.filename} already exists")
+
             # Create metadata document
             metadata = ResumeMetadata(
                 file_name=file.filename,
@@ -108,10 +146,10 @@ class ResumeService:
                 extracted_text=extracted_text,
                 parsed_info=parsed_info,
                 file_path=permanent_path,  # Store the file path
+                content_hash=content_hash,  # Store content hash for duplicate detection
             )
 
             # Store in MongoDB
-            collection = db_manager.get_collection(self.collection_name)
             # The model's dict() method will automatically exclude None _id values
             metadata_dict = metadata.dict(by_alias=True)
 
@@ -223,9 +261,9 @@ class ResumeService:
             logger.error("Vector manager is not initialized for search")
             return []
 
-        # Search in vector database
+        # Search in vector database with more results to account for stale references
         vector_results = await self.vector_manager.search_similar(
-            query, top_k * 2, filters
+            query, top_k * 5, filters  # Get 5x more results to account for stale vectors
         )
 
         logger.info(f"Vector search returned {len(vector_results)} results")
@@ -249,7 +287,12 @@ class ResumeService:
         matches = []
         collection = db_manager.get_collection(self.collection_name)
 
-        for doc_id in list(document_ids)[:top_k]:
+        # Process all unique document IDs until we have enough matches
+        processed_count = 0
+        for doc_id in document_ids:
+            if len(matches) >= top_k:
+                break  # We have enough matches
+                
             try:
                 # Convert string ID back to ObjectId if needed
                 if isinstance(doc_id, str):
@@ -275,10 +318,18 @@ class ResumeService:
                         ),
                     )
                     matches.append(match)
+                else:
+                    # Reduce log noise by changing to debug level
+                    logger.debug(f"Document {doc_id} not found in MongoDB (stale vector)")
+                    continue
 
             except Exception as e:
                 logger.error(f"Error retrieving resume {doc_id}: {e}")
                 continue
+            
+            processed_count += 1
+
+        logger.info(f"Processed {processed_count} documents, found {len(matches)} valid matches")
 
         # Sort by score
         matches.sort(key=lambda x: x.score, reverse=True)

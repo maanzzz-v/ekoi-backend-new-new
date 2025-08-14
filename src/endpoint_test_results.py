@@ -153,7 +153,7 @@ def print_configuration():
     print("=" * 25)
     
     config = {
-        "Slack Token": "xoxb-9339590015462-9339599690838-UKKdPG6yiEjcagGiJ44mk1FP",
+        "Slack Token": "Environment Variable: SLACK_TOKEN",
         "Default Channel": "#test_message",
         "Notification Mode": "Non-blocking async",
         "Trigger Point": "After final ranking in Enhanced RAG",
