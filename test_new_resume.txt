@@ -1,0 +1,32 @@
+John Smith
+Software Engineer
+
+Contact Information:
+Email: john.smith@email.com
+Phone: (555) 123-4567
+
+Summary:
+Experienced software engineer with 8 years in full-stack development.
+Strong expertise in React, Node.js, Python, and cloud technologies.
+
+Skills:
+- React.js, JavaScript, TypeScript
+- Node.js, Express.js
+- Python, Django, Flask
+- AWS, Docker, Kubernetes
+- MongoDB, PostgreSQL
+- Git, CI/CD
+
+Experience:
+Senior Software Engineer | Tech Corp | 2020 - Present
+- Lead a team of 5 developers
+- Built scalable web applications serving 100k+ users
+- Implemented microservices architecture
+
+Software Engineer | StartupXYZ | 2018 - 2020
+- Developed full-stack applications using React and Node.js
+- Optimized database queries improving performance by 40%
+
+Education:
+Bachelor of Science in Computer Science
+University of Technology | 2014 - 2018
