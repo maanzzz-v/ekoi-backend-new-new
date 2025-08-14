@@ -6,6 +6,7 @@ from typing import Dict, List, Optional, Any
 from pydantic import BaseModel, Field
 
 
+
 class MessageType(str, Enum):
     """Types of messages in a chat session."""
     USER = "user"
@@ -192,3 +193,12 @@ class OptimizedFollowUpResponse(BaseModel):
     quick_actions: Optional[List[Dict[str, str]]] = Field(default=None, description="Quick actions for follow-up")
     response_metadata: Optional[Dict[str, Any]] = Field(default=None, description="Response metadata")
     success: bool = True
+
+
+class AgentParameter(BaseModel):
+    """Schema for agent parameters."""
+    agent_name: str = Field(..., description="Name of the agent")
+    parameter1: str = Field(..., description="Value of parameter 1")
+    parameter2: str = Field(..., description="Value of parameter 2")
+    parameter3: str = Field(..., description="Value of parameter 3")
+    parameter4: str = Field(..., description="Value of parameter 4")
