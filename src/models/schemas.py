@@ -198,7 +198,7 @@ class OptimizedFollowUpResponse(BaseModel):
 class AgentParameter(BaseModel):
     """Schema for agent parameters."""
     agent_name: str = Field(..., description="Name of the agent")
-    parameter1: str = Field(..., description="Value of parameter 1")
-    parameter2: str = Field(..., description="Value of parameter 2")
-    parameter3: str = Field(..., description="Value of parameter 3")
-    parameter4: str = Field(..., description="Value of parameter 4")
+    parameter1: int = Field(..., description="Weight for parameter 1")
+    parameter2: int = Field(..., description="Weight for parameter 2")
+    parameter3: int = Field(..., description="Weight for parameter 3")
+    parameter4: int = Field(..., description="Weight for parameter 4")

@@ -5,6 +5,8 @@ import re
 from typing import List, Dict, Any, Optional, Tuple
 from services.resume_service import resume_service
 from services.rag_service import rag_service
+from services.llm_service import llm_service
+from controllers.agent_parameters_controller import get_agent_parameters, fetch_agent_parameters  # Assuming these functions exist
 from models.schemas import ResumeMatch
 
 logger = logging.getLogger(__name__)
@@ -338,6 +340,11 @@ class EnhancedRAGService:
         
         return enhanced
 
+    async def _fetch_agent_parameters(self) -> List[Dict[str, Any]]:
+        """Fetch agent parameters for use in re-ranking."""
+        from controllers.agent_parameters_controller import fetch_agent_parameters
+        return fetch_agent_parameters()
+
     async def _intelligent_rerank(
         self, 
         query: str, 
@@ -345,58 +352,21 @@ class EnhancedRAGService:
         query_analysis: Dict[str, Any], 
         top_k: int
     ) -> List[ResumeMatch]:
-        """Apply intelligent re-ranking based on query understanding."""
-        
-        if not matches:
-            return []
-        
-        # Apply domain-specific bonuses
+        """Re-rank matches intelligently using agent parameters."""
+        agent_parameters = await self._fetch_agent_parameters()
+
+        # Example: Use agent parameters to adjust scores
         for match in matches:
-            domain_bonus = 0.0
-            
-            if match.extracted_info and match.extracted_info.skills:
-                resume_skills = [skill.lower() for skill in match.extracted_info.skills]
-                
-                # Calculate domain alignment bonuses
-                for domain_info in query_analysis["skill_domains"]:
-                    domain_skills = (
-                        self.skill_contexts[domain_info["domain"]]["primary"] +
-                        self.skill_contexts[domain_info["domain"]]["related"]
+            for agent_param in agent_parameters:
+                if agent_param['agent_name'] in match.file_name:
+                    match.score += (
+                        agent_param['parameter1'] * 0.1 +
+                        agent_param['parameter2'] * 0.2 +
+                        agent_param['parameter3'] * 0.3 +
+                        agent_param['parameter4'] * 0.4
                     )
-                    
-                    matches_in_domain = sum(
-                        1 for skill in domain_skills 
-                        if skill.lower() in resume_skills
-                    )
-                    
-                    if matches_in_domain > 0:
-                        domain_bonus += (
-                            matches_in_domain / len(domain_skills) * 
-                            domain_info["score"] * 0.15
-                        )
-            
-            # Apply experience level bonus
-            experience_bonus = 0.0
-            if "level" in query_analysis["experience_indicators"]:
-                expected_level = query_analysis["experience_indicators"]["level"]
-                
-                if match.extracted_info:
-                    summary = getattr(match.extracted_info, 'summary', '') or ''
-                    summary_lower = summary.lower()
-                    
-                    if expected_level == "senior" and any(
-                        term in summary_lower for term in ["senior", "lead", "principal"]
-                    ):
-                        experience_bonus = 0.1
-                    elif expected_level == "junior" and any(
-                        term in summary_lower for term in ["junior", "entry", "graduate"]
-                    ):
-                        experience_bonus = 0.1
-            
-            # Apply enhanced scoring
-            match.score = match.score + domain_bonus + experience_bonus
-        
-        # Sort by enhanced score and return top_k
+
+        # Sort matches by updated scores
         matches.sort(key=lambda x: x.score, reverse=True)
         return matches[:top_k]
 
