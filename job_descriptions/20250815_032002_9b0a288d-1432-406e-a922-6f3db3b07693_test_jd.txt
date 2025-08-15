@@ -1,0 +1,49 @@
+Senior Python Developer Position
+
+Company: TechCorp Inc
+Location: Remote
+Department: Engineering
+
+Job Description:
+We are seeking an experienced Senior Python Developer to join our growing engineering team. This is a remote position offering excellent growth opportunities and competitive compensation.
+
+Requirements:
+- 5+ years of experience with Python development
+- Strong knowledge of Django and Flask frameworks  
+- Experience with AWS cloud services (EC2, S3, Lambda, RDS)
+- Proficiency in React.js for frontend development
+- Database experience with PostgreSQL and MongoDB
+- Experience with Docker and Kubernetes for containerization
+- Knowledge of CI/CD pipelines and Jenkins
+- Strong problem-solving and communication skills
+- Experience with RESTful API design and development
+- Knowledge of microservices architecture
+
+Responsibilities:
+- Design and develop scalable Python applications
+- Work with cross-functional teams to deliver high-quality software
+- Mentor junior developers and provide technical guidance
+- Participate in code reviews and architectural decisions
+- Deploy and maintain applications on AWS infrastructure
+- Optimize application performance and scalability
+- Collaborate with product managers and designers
+- Write comprehensive tests and documentation
+
+Nice to Have:
+- Experience with machine learning libraries (pandas, numpy, scikit-learn)
+- Knowledge of GraphQL APIs
+- Previous startup experience
+- Experience with Redis and caching strategies
+- Knowledge of data visualization tools
+- Familiarity with Agile/Scrum methodologies
+- Experience with monitoring and logging tools (ELK stack)
+
+Benefits:
+- Competitive salary with equity options
+- Comprehensive health insurance
+- Flexible work hours and remote work options
+- Professional development budget
+- Modern tech stack and equipment
+- Collaborative and innovative work environment
+
+This role offers an excellent opportunity to work on cutting-edge technology in a fast-paced, innovative environment.

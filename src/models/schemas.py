@@ -235,3 +235,57 @@ class JobDescriptionMetadata(BaseModel):
         """Pydantic config."""
         populate_by_name = True
         arbitrary_types_allowed = True
+
+class JDUploadResponse(BaseModel):
+    """Response model for Job Description file upload."""
+    message: str
+    job_description_id: str
+    file_name: str
+    session_id: str
+    extracted_text: str
+    success: bool = True
+
+
+class JDSearchRequest(BaseModel):
+    """Request model for searching candidates against a JD."""
+    session_id: str = Field(..., description="ID of the session in which JD search is performed")
+    top_k: Optional[int] = Field(default=None, description="Number of results to return")
+    filters: Optional[Dict[str, Any]] = Field(default=None, description="Additional search filters")
+
+
+class JDSearchResponse(BaseModel):
+    """Response model for JD-based candidate search."""
+    session_id: str
+    job_description_id: str
+    job_description_text: str
+    matches: List[ResumeMatch]
+    total_results: int
+    processing_time: float
+    search_results_stored: bool
+    success: bool = True
+
+
+class JDFollowUpRequest(BaseModel):
+    """Request model for follow-up questions in a JD search session."""
+    session_id: str
+    question: str
+
+
+class JDFollowUpResponse(BaseModel):
+    """Response model for JD follow-up queries."""
+    session_id: str
+    question: str
+    answer: str
+    candidates_analyzed: int
+    jd_filename: str
+    success: bool = True
+
+
+class JDSearchResultsResponse(BaseModel):
+    """Response model for retrieving stored JD search results."""
+    session_id: str
+    search_results: Dict[str, Any] = Field(
+        ..., 
+        description="Contains JD details, matches, and search metadata"
+    )
+    success: bool = True

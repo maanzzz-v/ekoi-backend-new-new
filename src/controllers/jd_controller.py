@@ -12,7 +12,7 @@ from models.schemas import (
     JDUploadResponse, 
     JDSearchRequest, 
     JDSearchResponse,
-    SessionJDFollowUpRequest
+    JDFollowUpRequest
 )
 from services.jd_service import jd_service
 from services.session_service import session_service
@@ -141,7 +141,7 @@ async def search_resumes_by_jd(request: JDSearchRequest):
 
 
 @router.post("/followup")
-async def jd_followup_question(request: SessionJDFollowUpRequest):
+async def jd_followup_question(request: JDFollowUpRequest):
     """
     Ask follow-up questions about the JD search results stored in session.
     

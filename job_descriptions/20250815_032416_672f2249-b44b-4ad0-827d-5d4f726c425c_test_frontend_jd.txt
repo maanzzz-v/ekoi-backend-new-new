@@ -1,0 +1,52 @@
+Senior Frontend Developer Position
+
+Company: DesignCorp Studios
+Location: New York, NY (Hybrid)
+Department: User Experience
+
+Job Description:
+We are seeking a talented Senior Frontend Developer to join our creative team. This role focuses on building beautiful, responsive user interfaces and exceptional user experiences.
+
+Requirements:
+- 4+ years of experience with React.js and modern JavaScript (ES6+)
+- Expert knowledge of HTML5, CSS3, and responsive design principles
+- Experience with state management libraries (Redux, Zustand, Context API)
+- Proficiency in TypeScript and modern frontend tooling
+- Strong skills in CSS frameworks (Tailwind CSS, Styled Components, Material-UI)
+- Experience with frontend testing frameworks (Jest, React Testing Library)
+- Knowledge of build tools and bundlers (Webpack, Vite, Parcel)
+- Understanding of browser compatibility and performance optimization
+- Experience with version control (Git) and collaborative development
+- Strong eye for design and attention to detail
+
+Responsibilities:
+- Develop responsive web applications using React.js and TypeScript
+- Collaborate with UX/UI designers to implement pixel-perfect designs
+- Optimize applications for maximum speed and scalability
+- Write clean, maintainable, and well-documented code
+- Conduct code reviews and mentor junior developers
+- Work with backend teams to integrate APIs and services
+- Implement accessibility standards (WCAG guidelines)
+- Stay up-to-date with latest frontend technologies and best practices
+- Participate in agile development processes and sprint planning
+
+Nice to Have:
+- Experience with Next.js or other React frameworks
+- Knowledge of CSS preprocessors (Sass, Less)
+- Experience with design tools (Figma, Adobe XD)
+- Understanding of SEO principles and web analytics
+- Experience with progressive web apps (PWAs)
+- Knowledge of GraphQL and modern API integration
+- Experience with mobile-first development
+- Familiarity with CI/CD pipelines for frontend applications
+
+Benefits:
+- Competitive salary and performance bonuses
+- Health, dental, and vision insurance
+- Flexible work arrangements and remote options
+- Professional development and conference attendance
+- Modern workspace with latest design tools
+- Creative and collaborative team environment
+- Stock options and equity participation
+
+This position offers an excellent opportunity to work on innovative user interfaces and shape the future of digital experiences at DesignCorp Studios.

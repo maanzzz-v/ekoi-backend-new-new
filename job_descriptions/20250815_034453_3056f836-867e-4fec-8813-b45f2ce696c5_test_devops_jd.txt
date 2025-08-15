@@ -1,0 +1,34 @@
+DevOps Engineer Position
+
+Company: CloudTech Solutions
+Location: Austin, TX (Remote)
+Department: Infrastructure
+
+Job Description:
+We are seeking a skilled DevOps Engineer to join our infrastructure team. This role focuses on automating deployment pipelines, managing cloud infrastructure, and ensuring system reliability.
+
+Requirements:
+- 3+ years of experience in DevOps and infrastructure automation
+- Strong knowledge of AWS/Azure cloud platforms
+- Experience with containerization (Docker, Kubernetes)
+- Proficiency in Infrastructure as Code (Terraform, CloudFormation)
+- Knowledge of CI/CD pipelines (Jenkins, GitLab CI, GitHub Actions)
+- Experience with monitoring and logging tools
+- Strong scripting skills (Python, Bash, PowerShell)
+- Understanding of networking and security best practices
+
+Responsibilities:
+- Design and maintain CI/CD pipelines
+- Manage cloud infrastructure and deployments
+- Implement monitoring and alerting systems
+- Automate infrastructure provisioning
+- Collaborate with development teams on deployment strategies
+- Ensure system security and compliance
+- Troubleshoot production issues and optimize performance
+
+Benefits:
+- Competitive salary with performance bonuses
+- Health insurance and retirement benefits
+- Flexible work arrangements
+- Professional development opportunities
+- Modern tools and technology stack

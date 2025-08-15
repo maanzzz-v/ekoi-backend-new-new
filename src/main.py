@@ -8,7 +8,7 @@ from fastapi.responses import JSONResponse
 from config.settings import settings
 from core.database import db_manager
 from core.vector_db import vector_manager
-from controllers import resume_router, health_router, chat_router
+from controllers import resume_router, health_router, chat_router, jd_router, agent_parameters_router
 from exceptions.custom_exceptions import ResumeIndexerException
 from services.resume_service import resume_service
 from utils.logger import configure_application_logging, get_logger
@@ -77,6 +77,8 @@ app.add_middleware(
 app.include_router(resume_router)
 app.include_router(health_router)
 app.include_router(chat_router)
+app.include_router(jd_router)
+app.include_router(agent_parameters_router)
 
 
 # Global exception handler

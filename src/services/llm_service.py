@@ -4,6 +4,7 @@ import logging
 from abc import ABC, abstractmethod
 from typing import List, Optional, Dict, Any
 import asyncio
+from openai import AsyncOpenAI
 
 from config.settings import settings
 
@@ -27,6 +28,7 @@ class EmbeddingProvider(ABC):
     def get_dimension(self) -> int:
         """Get the dimension of embeddings."""
         pass
+
 
 
 class SentenceTransformersProvider(EmbeddingProvider):
@@ -398,7 +400,7 @@ class VLLMProvider(EmbeddingProvider):
         return self.dimension
 
 
-class LLMService:
+'''class LLMService:
     """Service for managing different LLM providers."""
 
     def __init__(self):
@@ -474,7 +476,106 @@ class LLMService:
             return settings.embedding_model
         else:
             return "unknown"
+        
+    async def generate_response(self, prompt: str, max_tokens: int = 800, temperature: float = 0.7) -> str:
+        """Generate text response using the current provider."""
+        if not self.provider:
+            raise RuntimeError("LLM service not initialized")
 
+        try:
+            return await self.provider.generate_response(prompt, max_tokens, temperature)
+        except NotImplementedError:
+            # Fallback to OpenAI if current provider doesn't support text generation
+            logger.warning(f"Provider {self.provider_name} doesn't support text generation, falling back to OpenAI")
+            fallback_provider = OpenAIProvider()
+            await fallback_provider.initialize()
+            return await fallback_provider.generate_response(prompt, max_tokens, temperature)
+        except Exception as e:
+            logger.error(f"Text generation error: {e}")
+            raise'''
+
+class LLMService:
+    """Simplified LLM service using only OpenAI."""
+
+    def __init__(self):
+        self.client = None
+        self.dimension = 1536  # Default for text-embedding-ada-002
+
+    async def initialize(self):
+        """Initialize OpenAI client."""
+        try:
+            if not settings.openai_api_key:
+                raise ValueError("OpenAI API key not provided")
+
+            self.client = AsyncOpenAI(
+                api_key=settings.openai_api_key,
+                timeout=60.0,
+                max_retries=3
+            )
+            logger.info("OpenAI client initialized successfully")
+
+        except Exception as e:
+            logger.error(f"Failed to initialize OpenAI client: {str(e)}")
+            raise
+
+    async def generate_response(self, prompt: str, max_tokens: int = 800, temperature: float = 0.7) -> str:
+        """Generate text response using OpenAI."""
+        if not self.client:
+            await self.initialize()
+
+        try:
+            response = await self.client.chat.completions.create(
+                model="gpt-3.5-turbo",
+                messages=[
+                    {"role": "system", "content": "You are a professional AI recruitment assistant."},
+                    {"role": "user", "content": prompt}
+                ],
+                max_tokens=max_tokens,
+                temperature=temperature
+            )
+            
+            if not response.choices:
+                raise ValueError("No response generated from OpenAI")
+                
+            return response.choices[0].message.content
+
+        except Exception as e:
+            logger.error(f"OpenAI text generation error: {str(e)}")
+            raise
+
+    async def embed_text(self, text: str) -> List[float]:
+        """Generate embedding for single text."""
+        if not self.client:
+            await self.initialize()
+
+        try:
+            response = await self.client.embeddings.create(
+                model="text-embedding-ada-002",
+                input=text,
+                timeout=30.0
+            )
+            return response.data[0].embedding
+
+        except Exception as e:
+            logger.error(f"OpenAI embedding error: {str(e)}")
+            raise
+
+    async def embed_texts(self, texts: List[str]) -> List[List[float]]:
+        """Generate embeddings for multiple texts."""
+        if not self.client:
+            await self.initialize()
+
+        try:
+            response = await self.client.embeddings.create(
+                model="text-embedding-ada-002",
+                input=texts,
+                timeout=60.0
+            )
+            return [item.embedding for item in response.data]
+
+        except Exception as e:
+            logger.error(f"OpenAI batch embedding error: {str(e)}")
+            raise
 
 # Global LLM service instance
 llm_service = LLMService()

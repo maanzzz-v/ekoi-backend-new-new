@@ -1,0 +1,52 @@
+Senior Data Scientist Position
+
+Company: DataTech Analytics
+Location: San Francisco, CA (Remote friendly)
+Department: Data Science & Analytics
+
+Job Description:
+We are seeking an experienced Senior Data Scientist to join our analytics team. This role focuses on building machine learning models, conducting advanced statistical analysis, and driving data-driven insights for business decisions.
+
+Requirements:
+- 4+ years of experience in data science and machine learning
+- Expert knowledge of Python data science stack (pandas, numpy, scikit-learn)
+- Strong experience with machine learning frameworks (TensorFlow, PyTorch, Keras)
+- Proficiency in statistical analysis and experimental design
+- Experience with data visualization tools (matplotlib, seaborn, plotly)
+- Knowledge of SQL and database management systems
+- Experience with cloud platforms for ML (AWS SageMaker, Azure ML, GCP)
+- Understanding of MLOps and model deployment pipelines
+- Strong mathematical and statistical background
+- Experience with A/B testing and causal inference
+
+Responsibilities:
+- Develop and deploy machine learning models for business applications
+- Conduct statistical analysis and hypothesis testing
+- Build predictive models and recommendation systems
+- Collaborate with engineering teams on model deployment
+- Create data visualizations and dashboards for stakeholders
+- Design and analyze A/B tests and experiments
+- Research and implement new ML algorithms and techniques
+- Mentor junior data scientists and analysts
+- Present findings to technical and non-technical audiences
+
+Nice to Have:
+- PhD in Statistics, Mathematics, Computer Science, or related field
+- Experience with deep learning and neural networks
+- Knowledge of natural language processing (NLP) techniques
+- Experience with time series forecasting
+- Familiarity with big data technologies (Spark, Hadoop)
+- Experience with containerization (Docker, Kubernetes)
+- Knowledge of data engineering pipelines
+- Experience with real-time ML systems
+
+Benefits:
+- Competitive salary with equity and performance bonuses
+- Comprehensive health and wellness benefits
+- Flexible work arrangements and unlimited PTO
+- Professional development budget for conferences and courses
+- Access to cutting-edge hardware and cloud computing resources
+- Collaborative data science team environment
+- Opportunity to work on innovative ML projects
+
+This position offers an excellent opportunity to work on challenging data science problems and shape the future of analytics at DataTech Analytics.
